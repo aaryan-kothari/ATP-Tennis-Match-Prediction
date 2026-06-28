@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match Point — ATP Win Probability</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a1d1b;
+    --bg-raised: #22251f;
+    --bg-row: #20231f;
+    --line: #3a3d35;
+    --text: #ede8e0;
+    --text-dim: #a8a397;
+    --text-faint: #6f6c62;
+
+    /* Surface accent colors - the page's actual signature element.
+       These get applied dynamically per-match based on real surface data. */
+    --clay: #c2542d;
+    --clay-soft: #c2542d33;
+    --grass: #3a7d4f;
+    --grass-soft: #3a7d4f33;
+    --hard: #2f7fb0;
+    --hard-soft: #2f7fb033;
+    --unknown: #8a8578;
+    --unknown-soft: #8a857833;
+
+    --accent: var(--hard);
+    --accent-soft: var(--hard-soft);
+
+    --font-display: 'Oswald', 'Arial Narrow', sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+    --font-body: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 15% 10%, #ffffff08, transparent 40%),
+      radial-gradient(circle at 85% 90%, #ffffff05, transparent 40%);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+  }
+
+  a { color: inherit; }
+
+  /* ---------------- Header ---------------- */
+  header {
+    padding: 48px 32px 28px;
+    max-width: 1100px;
+    margin: 0 auto;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .eyebrow .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #57c785;
+    box-shadow: 0 0 0 0 #57c78555;
+    animation: pulse 2.2s infinite;
+  }
+
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 #57c78555; }
+    70%  { box-shadow: 0 0 0 6px #57c78500; }
+    100% { box-shadow: 0 0 0 0 #57c78500; }
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(36px, 6vw, 58px);
+    letter-spacing: -0.01em;
+    margin: 0 0 10px;
+    line-height: 1.02;
+    text-transform: uppercase;
+  }
+
+  h1 em {
+    font-style: normal;
+    color: var(--text-dim);
+  }
+
+  .subhead {
+    color: var(--text-dim);
+    font-size: 16px;
+    max-width: 560px;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .meta-row {
+    display: flex;
+    gap: 24px;
+    margin-top: 22px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-faint);
+    flex-wrap: wrap;
+  }
+
+  .meta-row span b {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* ---------------- Layout ---------------- */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 36px 32px 80px;
+  }
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .toolbar h2 {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    font-weight: 600;
+    margin: 0;
+  }
+
+  button.refresh {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    padding: 7px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  button.refresh:hover { border-color: var(--text-dim); color: var(--text); }
+  button.refresh:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  button.refresh:disabled { opacity: 0.4; cursor: default; }
+
+  /* ---------------- States: loading / error / empty ---------------- */
+  .state-block {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 40px 28px;
+    text-align: center;
+    color: var(--text-dim);
+  }
+
+  .state-block.error {
+    border-color: #8c3a3a;
+    background: #8c3a3a14;
+    color: #e0a3a3;
+    text-align: left;
+  }
+
+  .state-block.error .err-title {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 13px;
+    color: #e88;
+    margin: 0 0 8px;
+  }
+
+  .state-block.error .err-detail {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: #d49;
+    margin: 0 0 14px;
+    word-break: break-word;
+  }
+
+  .state-block.error .err-hint {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+  }
+
+  .skeleton-row {
+    height: 78px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    background: linear-gradient(100deg, var(--bg-row) 30%, #2a2d26 50%, var(--bg-row) 70%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ---------------- Tournament group ---------------- */
+  .tournament-group { margin-bottom: 34px; }
+
+  .tournament-label {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .surface-chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-weight: 600;
+  }
+
+  /* ---------------- Match row ---------------- */
+  .match-row {
+    background: var(--bg-row);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 18px 20px;
+    margin-bottom: 10px;
+    transition: border-color 0.2s;
+  }
+
+  .match-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .players {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 500;
+    text-transform: uppercase;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .players .vs {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-faint);
+    font-weight: 400;
+  }
+
+  .player-name { white-space: nowrap; }
+  .player-name.winner-tag { color: var(--accent); }
+
+  .match-time {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-faint);
+    white-space: nowrap;
+  }
+
+  .match-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  select.surface-select {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 6px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  button.predict-btn {
+    background: var(--accent);
+    color: #0e0f0d;
+    border: none;
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 9px 18px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+  }
+  button.predict-btn:hover { filter: brightness(1.12); }
+  button.predict-btn:active { transform: scale(0.97); }
+  button.predict-btn:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  button.predict-btn:disabled { opacity: 0.5; cursor: default; }
+
+  button.predict-btn.is-loading {
+    color: transparent;
+    position: relative;
+  }
+  button.predict-btn.is-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #0e0f0d55;
+    border-top-color: #0e0f0d;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    top: calc(50% - 7px);
+    left: calc(50% - 7px);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------------- Prediction reveal (the signature element) ---------------- */
+  .prediction-panel {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--line);
+    display: none;
+  }
+  .prediction-panel.visible { display: block; }
+
+  .score-bar-wrap {
+    position: relative;
+    height: 34px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: #14160f;
+    border: 1px solid var(--line);
+  }
+
+  .score-bar-fill-a, .score-bar-fill-b {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 50%;
+    transition: width 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .score-bar-fill-a {
+    left: 0;
+    background: var(--accent);
+  }
+  .score-bar-fill-b {
+    right: 0;
+    background: var(--text-faint);
+  }
+
+  .score-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .score-bar-labels .pct {
+    font-weight: 700;
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+  .score-bar-labels .pct.fav { color: var(--accent); }
+
+  .prediction-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .confidence-tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 2px;
+    font-weight: 600;
+  }
+  .confidence-tag.high   { background: #2f9e5722; color: #5fd684; }
+  .confidence-tag.medium { background: #b8862922; color: #e0ad5c; }
+  .confidence-tag.low    { background: #8a858722; color: #b3aea1; }
+  .confidence-tag.close  { background: #8c3a3a22; color: #e0a3a3; }
+
+  .prediction-notes {
+    font-size: 12px;
+    color: var(--text-faint);
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  .prediction-error {
+    color: #e0a3a3;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  /* ---------------- Accuracy Dashboard ---------------- */
+  .dashboard-section {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+  }
+
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .stat-cell {
+    background: var(--bg-row);
+    padding: 16px 14px;
+    text-align: center;
+  }
+
+  .stat-cell .stat-value {
+    font-family: var(--font-mono);
+    font-size: 26px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    display: block;
+  }
+
+  .stat-cell .stat-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-top: 4px;
+    display: block;
+  }
+
+  .stat-cell.correct .stat-value { color: #5fd684; }
+  .stat-cell.incorrect .stat-value { color: #e0a3a3; }
+  .stat-cell.close .stat-value { color: #e0ad5c; }
+  .stat-cell.pending .stat-value { color: var(--text-dim); }
+
+  .overall-accuracy-bar {
+    margin-bottom: 28px;
+  }
+
+  .overall-accuracy-bar .bar-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .overall-accuracy-bar .bar-track {
+    height: 28px;
+    background: #14160f;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .overall-accuracy-bar .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3a7d4f, #5fd684);
+    transition: width 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  .overall-accuracy-bar .bar-pct {
+    position: relative;
+    z-index: 1;
+    margin-left: 12px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text);
+    text-shadow: 0 1px 3px #000000cc;
+  }
+
+  .breakdown-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .breakdown-col h3 {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+
+  .breakdown-row {
+    margin-bottom: 12px;
+  }
+
+  .breakdown-row .breakdown-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .breakdown-row .breakdown-name { color: var(--text); }
+  .breakdown-row .breakdown-fraction {
+    font-family: var(--font-mono);
+    color: var(--text-faint);
+    font-size: 12px;
+  }
+
+  .breakdown-row .breakdown-track {
+    height: 8px;
+    background: #14160f;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .breakdown-row .breakdown-fill {
+    height: 100%;
+    background: var(--hard);
+    transition: width 0.6s ease-out;
+  }
+
+  .dashboard-empty {
+    color: var(--text-faint);
+    font-size: 14px;
+    padding: 20px 0;
+  }
+
+  .sync-status {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  @media (max-width: 640px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .breakdown-grid { grid-template-columns: 1fr; }
+  }
+  footer {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 32px 50px;
+    color: var(--text-faint);
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+
+  /* ---------------- Responsive ---------------- */
+  @media (max-width: 640px) {
+    header { padding: 32px 18px 22px; }
+    main { padding: 28px 18px 60px; }
+    .players { font-size: 16px; }
+    .match-top { flex-direction: column; align-items: flex-start; }
+    .match-actions { width: 100%; justify-content: space-between; }
+    .score-bar-labels { flex-direction: column; gap: 4px; }
+    .score-bar-labels span:last-child { text-align: left; }
+    .prediction-footer { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow"><span class="dot"></span> Live ATP Fixture Feed</div>
+  <h1>Match Point <em>// Win Probability</em></h1>
+  <p class="subhead">
+    Upcoming ATP matches, pulled live. Pick a matchup and run it through a
+    model trained on over two decades of tour history — Elo, surface form,
+    and head-to-head — to see who the numbers favor.
+  </p>
+  <div class="meta-row">
+    <span>Matches loaded: <b id="meta-match-count">—</b></span>
+    <span>Players tracked: <b id="meta-player-count">—</b></span>
+    <span>Data through: <b id="meta-latest-date">—</b></span>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <h2>Upcoming Fixtures</h2>
+    <button class="refresh" id="refresh-btn">↻ Refresh</button>
+  </div>
+
+  <div id="fixtures-container">
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row"></div>
+  </div>
+
+  <section class="dashboard-section">
+    <div class="dashboard-header">
+      <h2>Model Accuracy</h2>
+      <span class="sync-status" id="sync-status"></span>
+    </div>
+    <div id="dashboard-container">
+      <div class="skeleton-row"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Predictions are model estimates from historical data, not betting advice or
+  certainty. "Too close to call" means the model itself is unsure.
+</footer>
+
+<script>
+/* ======================================================================
+   CONFIG — backend URL.
+
+   For LOCAL DEVELOPMENT, this defaults to http://127.0.0.1:8000 automatically
+   whenever the page itself is loaded from localhost/127.0.0.1 - no edit needed.
+
+   FOR DEPLOYMENT: replace the DEPLOYED_API_BASE value below with your real
+   deployed backend URL (e.g. "https://your-app.onrender.com") before
+   publishing this file. This is the ONE line to change when deploying.
+
+   You can also override either of the above at runtime by loading the page
+   with a ?api= query parameter, e.g.
+   index.html?api=https://your-app.onrender.com - useful for testing against
+   a deployed backend without editing this file.
+   ====================================================================== */
+const DEPLOYED_API_BASE = "https://your-backend-url.onrender.com"; // <-- set this when deploying
+
+const API_BASE = (() => {
+  const params = new URLSearchParams(window.location.search);
+  const override = params.get("api");
+  if (override) return override.replace(/\/$/, "");
+
+  const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  return isLocal ? "http://127.0.0.1:8000" : DEPLOYED_API_BASE;
+})();
+
+const SURFACE_STYLES = {
+  Clay:    { var: "--clay",    soft: "--clay-soft" },
+  Grass:   { var: "--grass",   soft: "--grass-soft" },
+  Hard:    { var: "--hard",    soft: "--hard-soft" },
+  Unknown: { var: "--unknown", soft: "--unknown-soft" },
+};
+
+function surfaceColorVar(surface) {
+  return (SURFACE_STYLES[surface] || SURFACE_STYLES.Unknown).var;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatMatchTime(iso) {
+  if (!iso) return "Time TBD";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      weekday: "short", month: "short", day: "numeric",
+      hour: "numeric", minute: "2-digit",
+    });
+  } catch (e) {
+    return iso;
+  }
+}
+
+function confidenceClass(label) {
+  if (label === "High") return "high";
+  if (label === "Medium") return "medium";
+  if (label === "Low") return "low";
+  return "close"; // "Too Close to Call"
+}
+
+/* ======================================================================
+   Fetch + render fixtures
+   ====================================================================== */
+async function loadHealth() {
+  try {
+    const res = await fetch(`${API_BASE}/health`);
+    if (!res.ok) return;
+    const data = await res.json();
+    document.getElementById("meta-match-count").textContent =
+      data.matches_loaded?.toLocaleString?.() ?? data.matches_loaded ?? "—";
+    document.getElementById("meta-player-count").textContent =
+      data.distinct_players?.toLocaleString?.() ?? data.distinct_players ?? "—";
+    document.getElementById("meta-latest-date").textContent =
+      data.latest_match_date ?? "—";
+  } catch (e) {
+    // Health check failing isn't critical to show fixtures - fail silently here,
+    // the fixtures call below will surface a real error if the backend is down.
+  }
+}
+
+async function loadFixtures(forceRefresh = false) {
+  const container = document.getElementById("fixtures-container");
+  const refreshBtn = document.getElementById("refresh-btn");
+
+  container.innerHTML = `
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row"></div>
+  `;
+  refreshBtn.disabled = true;
+
+  try {
+    const url = `${API_BASE}/fixtures/upcoming${forceRefresh ? "?force_refresh=true" : ""}`;
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || `Server returned ${res.status}`);
+    }
+
+    const fixtures = await res.json();
+    renderFixtures(fixtures);
+  } catch (err) {
+    renderError(err);
+  } finally {
+    refreshBtn.disabled = false;
+  }
+}
+
+function renderError(err) {
+  const container = document.getElementById("fixtures-container");
+  const isNetworkError = err instanceof TypeError; // fetch throws TypeError on network failure / CORS / server down
+
+  container.innerHTML = `
+    <div class="state-block error">
+      <p class="err-title">Couldn't load fixtures</p>
+      <p class="err-detail">${escapeHtml(err.message || String(err))}</p>
+      <p class="err-hint">
+        ${isNetworkError
+          ? "The backend may not be running, or it's on a different address than " + escapeHtml(API_BASE) + ". Check that uvicorn is running and reachable."
+          : "The fixtures service may be temporarily unavailable, or the ODDS_API_KEY may need attention on the backend. Try refreshing in a few minutes."}
+      </p>
+    </div>
+  `;
+}
+
+function renderFixtures(fixtures) {
+  const container = document.getElementById("fixtures-container");
+
+  if (!fixtures || fixtures.length === 0) {
+    container.innerHTML = `
+      <div class="state-block">
+        No upcoming ATP matches are live in the feed right now. Tournaments
+        only appear here once they're active in the data source — check back
+        closer to the next event, or hit Refresh.
+      </div>
+    `;
+    return;
+  }
+
+  // Group by tournament for the draw-sheet layout
+  const groups = {};
+  for (const f of fixtures) {
+    (groups[f.tournament] = groups[f.tournament] || []).push(f);
+  }
+
+  container.innerHTML = "";
+  for (const [tournament, matches] of Object.entries(groups)) {
+    const surface = matches[0].surface_known ? matches[0].surface : "Unknown";
+    const colorVar = surfaceColorVar(surface);
+
+    const group = document.createElement("div");
+    group.className = "tournament-group";
+    group.innerHTML = `
+      <div class="tournament-label">
+        ${escapeHtml(tournament)}
+        <span class="surface-chip" style="background:var(${colorVar})22; color:var(${colorVar})">
+          ${escapeHtml(surface)}
+        </span>
+      </div>
+    `;
+
+    for (const fixture of matches) {
+      group.appendChild(renderMatchRow(fixture));
+    }
+    container.appendChild(group);
+  }
+}
+
+function renderMatchRow(fixture) {
+  const row = document.createElement("div");
+  row.className = "match-row";
+  const colorVar = surfaceColorVar(fixture.surface_known ? fixture.surface : "Unknown");
+  row.style.setProperty("--accent", `var(${colorVar})`);
+
+  const needsSurfacePicker = !fixture.surface_known;
+
+  row.innerHTML = `
+    <div class="match-top">
+      <div class="players">
+        <span class="player-name" data-role="a">${escapeHtml(fixture.player_a)}</span>
+        <span class="vs">vs</span>
+        <span class="player-name" data-role="b">${escapeHtml(fixture.player_b)}</span>
+      </div>
+      <div class="match-time">${formatMatchTime(fixture.commence_time)}</div>
+    </div>
+    <div class="match-top" style="margin-top:10px;">
+      <div class="match-actions" style="flex-wrap: wrap;">
+        ${needsSurfacePicker ? `
+          <select class="surface-select" aria-label="Select surface (unknown for this tournament)">
+            <option value="Hard" selected>Hard</option>
+            <option value="Clay">Clay</option>
+            <option value="Grass">Grass</option>
+          </select>
+        ` : ""}
+        <button class="predict-btn">Predict</button>
+      </div>
+    </div>
+    <div class="prediction-panel">
+      <div class="score-bar-wrap">
+        <div class="score-bar-fill-a" style="width:50%"></div>
+        <div class="score-bar-fill-b" style="width:50%"></div>
+      </div>
+      <div class="score-bar-labels">
+        <span class="pct" data-role="pct-a">—</span>
+        <span class="pct" data-role="pct-b">—</span>
+      </div>
+      <div class="prediction-footer">
+        <span class="confidence-tag" data-role="confidence">—</span>
+        <span data-role="winner-text" style="font-size:13px; color:var(--text-dim);"></span>
+      </div>
+      <div class="prediction-notes" data-role="notes"></div>
+    </div>
+  `;
+
+  const predictBtn = row.querySelector(".predict-btn");
+  predictBtn.addEventListener("click", () => handlePredictClick(row, fixture));
+
+  const surfaceSelectEl = row.querySelector(".surface-select");
+  if (surfaceSelectEl) {
+    surfaceSelectEl.addEventListener("change", () => {
+      const chosenVar = surfaceColorVar(surfaceSelectEl.value);
+      row.style.setProperty("--accent", `var(${chosenVar})`);
+    });
+  }
+
+  return row;
+}
+
+/* ======================================================================
+   Predict button handler
+   ====================================================================== */
+async function handlePredictClick(row, fixture) {
+  const btn = row.querySelector(".predict-btn");
+  const panel = row.querySelector(".prediction-panel");
+  const surfaceSelect = row.querySelector(".surface-select");
+  const surface = surfaceSelect ? surfaceSelect.value : fixture.surface;
+
+  btn.classList.add("is-loading");
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        player_a: fixture.player_a,
+        player_b: fixture.player_b,
+        surface: surface,
+        fixture_id: fixture.fixture_id || null,
+        tournament: fixture.tournament || null,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || `Server returned ${res.status}`);
+    }
+
+    const result = await res.json();
+    renderPrediction(row, result);
+  } catch (err) {
+    panel.classList.add("visible");
+    panel.querySelector(".score-bar-wrap").style.display = "none";
+    panel.querySelector(".score-bar-labels").style.display = "none";
+    panel.querySelector(".prediction-footer").innerHTML =
+      `<span class="prediction-error">Prediction failed: ${escapeHtml(err.message || String(err))}</span>`;
+  } finally {
+    btn.classList.remove("is-loading");
+    btn.disabled = false;
+  }
+}
+
+function renderPrediction(row, result) {
+  const panel = row.querySelector(".prediction-panel");
+  panel.classList.add("visible");
+
+  const pctA = Math.round(result.prob_a_wins * 100);
+  const pctB = Math.round(result.prob_b_wins * 100);
+  const aIsFav = result.prob_a_wins >= result.prob_b_wins;
+
+  const fillA = panel.querySelector(".score-bar-fill-a");
+  const fillB = panel.querySelector(".score-bar-fill-b");
+  const labelA = panel.querySelector('[data-role="pct-a"]');
+  const labelB = panel.querySelector('[data-role="pct-b"]');
+  const confTag = panel.querySelector('[data-role="confidence"]');
+  const winnerText = panel.querySelector('[data-role="winner-text"]');
+  const notes = panel.querySelector('[data-role="notes"]');
+
+  // Animate the bar - set to 50/50 first, then to real values on next frame
+  // so the CSS transition actually plays (the scoreboard-flip signature moment).
+  fillA.style.width = "50%";
+  fillB.style.width = "50%";
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      fillA.style.width = `${pctA}%`;
+      fillB.style.width = `${pctB}%`;
+    });
+  });
+
+  labelA.textContent = `${result.player_a} — ${pctA}%`;
+  labelB.textContent = `${pctB}% — ${result.player_b}`;
+  labelA.classList.toggle("fav", aIsFav);
+  labelB.classList.toggle("fav", !aIsFav);
+
+  confTag.textContent = result.confidence;
+  confTag.className = `confidence-tag ${confidenceClass(result.confidence)}`;
+
+  if (result.predicted_winner) {
+    winnerText.textContent = `Model favors ${result.predicted_winner}`;
+  } else {
+    winnerText.textContent = "Model gives this one a true coin-flip";
+  }
+
+  if (result.notes && result.notes.length > 0) {
+    notes.textContent = result.notes.join(" · ");
+  } else if (result.tracked) {
+    notes.textContent = "Tracked — this prediction will be checked against the real result.";
+  } else {
+    notes.textContent = "";
+  }
+}
+
+/* ======================================================================
+   Accuracy Dashboard
+   ====================================================================== */
+function escapeAttr(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[c]);
+}
+
+async function loadDashboard() {
+  const container = document.getElementById("dashboard-container");
+  const syncStatusEl = document.getElementById("sync-status");
+
+  try {
+    const res = await fetch(`${API_BASE}/dashboard/accuracy`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || `Server returned ${res.status}`);
+    }
+    const report = await res.json();
+    renderDashboard(report);
+    syncStatusEl.textContent = "Updated just now";
+  } catch (err) {
+    container.innerHTML = `
+      <div class="state-block error">
+        <p class="err-title">Couldn't load the accuracy dashboard</p>
+        <p class="err-detail">${escapeHtml(err.message || String(err))}</p>
+        <p class="err-hint">Predictions made via the fixtures above are tracked automatically — once
+        a few matches finish, this section will populate.</p>
+      </div>
+    `;
+  }
+}
+
+function renderDashboard(report) {
+  const container = document.getElementById("dashboard-container");
+
+  if (report.total_tracked === 0) {
+    container.innerHTML = `
+      <div class="dashboard-empty">
+        No tracked predictions yet. Click "Predict" on a live fixture above —
+        once that match finishes, the result feeds into this dashboard automatically.
+      </div>
+    `;
+    return;
+  }
+
+  const overallPct = report.overall_accuracy !== null ? Math.round(report.overall_accuracy * 100) : null;
+
+  const statCells = [
+    { label: "Correct", value: report.correct, cls: "correct" },
+    { label: "Incorrect", value: report.incorrect, cls: "incorrect" },
+    { label: "Too Close to Call", value: report.too_close_to_call, cls: "close" },
+    { label: "Pending", value: report.pending, cls: "pending" },
+    { label: "Unresolved", value: report.unresolved, cls: "pending" },
+  ];
+
+  const statGridHtml = statCells.map(c => `
+    <div class="stat-cell ${c.cls}">
+      <span class="stat-value">${c.value}</span>
+      <span class="stat-label">${escapeHtml(c.label)}</span>
+    </div>
+  `).join("");
+
+  const overallBarHtml = overallPct !== null ? `
+    <div class="overall-accuracy-bar">
+      <div class="bar-label-row">
+        <span>Overall accuracy (${report.graded} graded prediction${report.graded === 1 ? "" : "s"})</span>
+        <span>${overallPct}%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${overallPct}%"></div>
+        <div class="bar-pct">${overallPct}% correct</div>
+      </div>
+    </div>
+  ` : `
+    <div class="dashboard-empty">No graded predictions yet — accuracy will appear once tracked matches finish.</div>
+  `;
+
+  const breakdownColHtml = (title, buckets) => {
+    const entries = Object.entries(buckets);
+    if (entries.length === 0) {
+      return `<div class="breakdown-col"><h3>${escapeHtml(title)}</h3><div class="dashboard-empty">No data yet</div></div>`;
+    }
+    const rows = entries
+      .sort((a, b) => b[1].graded - a[1].graded)
+      .map(([name, stats]) => {
+        const pct = stats.accuracy !== null ? Math.round(stats.accuracy * 100) : 0;
+        return `
+          <div class="breakdown-row">
+            <div class="breakdown-label-row">
+              <span class="breakdown-name">${escapeHtml(name)}</span>
+              <span class="breakdown-fraction">${stats.correct}/${stats.graded} (${pct}%)</span>
+            </div>
+            <div class="breakdown-track">
+              <div class="breakdown-fill" style="width:${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    return `<div class="breakdown-col"><h3>${escapeHtml(title)}</h3>${rows}</div>`;
+  };
+
+  container.innerHTML = `
+    <div class="stat-grid">${statGridHtml}</div>
+    ${overallBarHtml}
+    <div class="breakdown-grid">
+      ${breakdownColHtml("By Tournament", report.by_tournament)}
+      ${breakdownColHtml("By Surface", report.by_surface)}
+    </div>
+  `;
+}
+
+/* ======================================================================
+   Init
+   ====================================================================== */
+document.getElementById("refresh-btn").addEventListener("click", () => loadFixtures(true));
+
+loadHealth();
+loadFixtures(false);
+loadDashboard();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: tennis-prediction-api
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: ODDS_API_KEY
+        sync: false   # set this manually in the Render dashboard - never commit real keys
+      - key: PYTHON_VERSION
+        value: "3.11"
+
+# NOTE on persistence: this is the FREE tier, which has an EPHEMERAL
+# filesystem - tracking.db (the SQLite accuracy-dashboard database) will be
+# wiped on every redeploy and on periodic instance restarts. This is a known,
+# accepted tradeoff for this project (portfolio/demo use - occasional resets
+# are fine). If you need the tracking history to persist long-term, either:
+#   1. Add a Render persistent disk (paid) and mount it, or
+#   2. Swap tracking_db.py's storage to a hosted Postgres instance (e.g.
+#      Render's free Postgres tier) instead of local SQLite.
+# Neither is implemented here by default - this file deploys the simplest
+# working version first.
